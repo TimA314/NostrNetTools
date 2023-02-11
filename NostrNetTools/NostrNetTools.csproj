@@ -9,4 +9,9 @@
     <Description>A C# nuget package for interacting with the Nostr protocol</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="LinqKit.Core" Version="1.2.3" />
+    <PackageReference Include="NBitcoin.Secp256k1" Version="3.1.0" />
+  </ItemGroup>
+
 </Project>
