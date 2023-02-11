@@ -9,19 +9,19 @@ namespace MioApp.Nostr
     {
         private readonly Uri _relay;
         protected ClientWebSocket? websocket;
-        private CancellationTokenSource? _Cts;
-        private CancellationTokenSource messageCts = new();
+        private CancellationTokenSource? _cancelationTokenSource;
+        private CancellationTokenSource messageCancelationTokenSource = new();
 
         public NostrClient(Uri relay)
         {
             _relay = relay;
-            _ = ProcessChannel(PendingIncomingMessages, HandleIncomingMessage, messageCts.Token);
-            _ = ProcessChannel(PendingOutgoingMessages, HandleOutgoingMessage, messageCts.Token);
+            _ = ProcessChannel(PendingIncomingMessages, HandleIncomingMessage, messageCancelationTokenSource.Token);
+            _ = ProcessChannel(PendingOutgoingMessages, HandleOutgoingMessage, messageCancelationTokenSource.Token);
         }
 
         public Task Disconnect()
         {
-            _Cts?.Cancel();
+            _cancelationTokenSource?.Cancel();
             return Task.CompletedTask;
         }
 
@@ -33,11 +33,11 @@ namespace MioApp.Nostr
 
         public async Task Connect(CancellationToken token = default)
         {
-            _Cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _cancelationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            while (!_Cts.IsCancellationRequested)
+            while (!_cancelationTokenSource.IsCancellationRequested)
             {
-                await ConnectAndWaitUntilConnected(_Cts.Token);
+                await ConnectAndWaitUntilConnected(_cancelationTokenSource.Token);
                 _ = ListenForMessages();
                 websocket!.Abort();
             }
@@ -46,22 +46,26 @@ namespace MioApp.Nostr
         public async IAsyncEnumerable<string> ListenForRawMessages()
         {
             var buffer = new ArraySegment<byte>(new byte[2048]);
-            while (websocket.State == WebSocketState.Open && !_Cts.IsCancellationRequested)
+            while (websocket.State == WebSocketState.Open 
+                   && !_cancelationTokenSource.IsCancellationRequested)
             {
                 WebSocketReceiveResult result;
-                await using var ms = new MemoryStream();
+                await using var memoryStream = new MemoryStream();
                 do
                 {
-                    result = await websocket!.ReceiveAsync(buffer, _Cts.Token);
-                    ms.Write(buffer.Array!, buffer.Offset, result.Count);
-                } while (!result.EndOfMessage);
+                    result = await websocket!.ReceiveAsync(buffer, _cancelationTokenSource.Token);
+                    memoryStream.Write(buffer.Array!, buffer.Offset, result.Count);
+                } 
+                while (!result.EndOfMessage);
 
-                ms.Seek(0, SeekOrigin.Begin);
+                memoryStream.Seek(0, SeekOrigin.Begin);
 
-                yield return Encoding.UTF8.GetString(ms.ToArray());
+                yield return Encoding.UTF8.GetString(memoryStream.ToArray());
 
                 if (result.MessageType == WebSocketMessageType.Close)
+                {
                     break;
+                }
             }
 
             websocket.Abort();
@@ -168,7 +172,7 @@ namespace MioApp.Nostr
 
         public void Dispose()
         {
-            messageCts.Cancel();
+            messageCancelationTokenSource.Cancel();
             Disconnect();
         }
 
@@ -179,7 +183,7 @@ namespace MioApp.Nostr
                 return;
             }
 
-            _Cts ??= CancellationTokenSource.CreateLinkedTokenSource(token);
+            _cancelationTokenSource ??= CancellationTokenSource.CreateLinkedTokenSource(token);
 
             websocket?.Dispose();
             websocket = new ClientWebSocket();
