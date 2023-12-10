@@ -10,11 +10,14 @@ namespace MioApp.Nostr
 
         [JsonPropertyName("pubkey")]
         public string PublicKey { get; set; }
+
         [JsonPropertyName("created_at")]
         [JsonConverter(typeof(UnixTimestampSecondsJsonConverter))]
         public DateTimeOffset? CreatedAt { get; set; }
+
         [JsonPropertyName("kind")]
         public int Kind { get; set; }
+
         [JsonPropertyName("content")]
         [JsonConverter(typeof(StringEscaperJsonConverter))]
         public string Content { get; set; }
