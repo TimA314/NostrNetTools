@@ -1,6 +1,6 @@
-﻿using System.Runtime.Versioning;
+﻿using NostrNetTools.Nostr;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
-using MioApp.Nostr;
 
 namespace NostrNetTools.Utils
 {
