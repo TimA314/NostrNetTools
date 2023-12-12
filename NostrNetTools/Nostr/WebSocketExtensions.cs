@@ -1,7 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     public static class WebSocketExtensions
     {

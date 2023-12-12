@@ -25,7 +25,7 @@ namespace NostrNetTools.Utils
             return hex - ((hex < ':') ? 48 : ((hex < 'a') ? 55 : 87));
         }
 
-        public static string ToHex(this byte[] bytes)
+        public static string ToHexFromBytes(this byte[] bytes)
         {
             if (bytes == null)
             {

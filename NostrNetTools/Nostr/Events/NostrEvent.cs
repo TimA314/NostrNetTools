@@ -1,7 +1,7 @@
-﻿using MioApp.Nostr.JsonConverters;
+﻿using NostrNetTools.Nostr.JsonConverters;
 using System.Text.Json.Serialization;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr.Events
 {
     public class NostrEvent : IEqualityComparer<NostrEvent>
     {

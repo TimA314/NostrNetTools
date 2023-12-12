@@ -1,7 +1,9 @@
 ﻿using LinqKit;
 using NBitcoin.Secp256k1;
+using NostrNetTools.Nostr.Events;
+using NostrNetTools.Utils;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     public static class NostrExtensions
     {
@@ -122,7 +124,7 @@ namespace MioApp.Nostr
         {
             Span<byte> output = new Span<byte>(new byte[32]);
             key.WriteToSpan(output);
-            return output.ToHex();
+            return output.ToHexFromSpanBytes();
         }
 
         public static string ToHex(this ECXOnlyPubKey key)

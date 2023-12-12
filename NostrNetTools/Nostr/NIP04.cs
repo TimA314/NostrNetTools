@@ -1,10 +1,12 @@
 ﻿using NBitcoin.Secp256k1;
+using NostrNetTools.Nostr.Events;
+using NostrNetTools.Utils;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     public static class NIP04
     {
-        public static IAesEncryptor Encryptor = new AesEncryptor();
+        public static IAesEncryptor Encryptor;
 
         public static Task<string> DecryptNip04Event(this NostrEvent nostrEvent, ECPrivKey key)
         {

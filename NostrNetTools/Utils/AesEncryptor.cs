@@ -1,7 +1,8 @@
 ﻿using System.Runtime.Versioning;
 using System.Security.Cryptography;
+using MioApp.Nostr;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Utils
 {
     public class AesEncryptor : IAesEncryptor
     {

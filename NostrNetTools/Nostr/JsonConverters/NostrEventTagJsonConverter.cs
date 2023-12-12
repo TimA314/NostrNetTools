@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 
-namespace MioApp.Nostr.JsonConverters
+namespace NostrNetTools.Nostr.JsonConverters
 {
     public class NostrEventTagJsonConverter : JsonConverter<NostrEventTag>
     {

@@ -2,8 +2,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using NostrNetTools.Nostr.Events;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     public class NostrClient : IDisposable
     {

@@ -1,8 +1,9 @@
-﻿using MioApp.Nostr.JsonConverters;
+﻿using NostrNetTools.Nostr.JsonConverters;
+using NostrNetTools.Utils;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     public class NostrSubscriptionFilter
     {

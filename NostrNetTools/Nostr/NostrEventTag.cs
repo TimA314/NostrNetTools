@@ -1,11 +1,12 @@
-﻿using MioApp.Nostr.JsonConverters;
+﻿using NostrNetTools.Nostr.Events;
+using NostrNetTools.Nostr.JsonConverters;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Nostr
 {
     [JsonConverter(typeof(NostrEventTagJsonConverter))]
     public class NostrEventTag

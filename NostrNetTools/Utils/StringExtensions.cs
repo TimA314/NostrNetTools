@@ -1,7 +1,7 @@
-﻿using System.Text;
-using NBitcoin.Secp256k1;
+﻿using NBitcoin.Secp256k1;
+using System.Text;
 
-namespace MioApp.Nostr
+namespace NostrNetTools.Utils
 {
     public static class StringExtensions
     {
@@ -15,11 +15,11 @@ namespace MioApp.Nostr
             var result = new byte[encoded.Length / 2];
             for (int i = 0, j = 0; i < encoded.Length; i += 2, j++)
             {
-                var a = IsDigit(encoded[i]);
-                var b = IsDigit(encoded[i + 1]);
+                var a = encoded[i].IsDigit();
+                var b = encoded[i + 1].IsDigit();
                 if (a == -1 || b == -1)
                     throw new FormatException("Invalid Hex String");
-                result[j] = (byte)(((uint)a << 4) | (uint)b);
+                result[j] = (byte)((uint)a << 4 | (uint)b);
             }
 
             return result;
@@ -58,12 +58,12 @@ namespace MioApp.Nostr
             // Create a SHA256   
             using var sha256Hash = System.Security.Cryptography.SHA256.Create();
             // ComputeHash - returns byte array  
-            return sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+            return sha256Hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawData));
         }
 
         public static string ToHex(this byte[] bytes)
         {
-            var builder = new StringBuilder();
+            var builder = new System.Text.StringBuilder();
             foreach (var t in bytes)
             {
                 builder.Append(t.ToHex());
@@ -77,7 +77,7 @@ namespace MioApp.Nostr
             return b.ToString("x2");
         }
 
-        public static string ToHex(this Span<byte> bytes)
+        public static string ToHexFromSpanBytes(this Span<byte> bytes)
         {
             var builder = new StringBuilder();
             foreach (var t in bytes)
