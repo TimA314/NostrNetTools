@@ -69,9 +69,9 @@ namespace NostrNetTools.Nostr.Connections
             _websocket.Dispose();
         }
 
-        public async Task SendSubscriptionRequestAsync(string subscriptionId, object filters, CancellationToken cancellationToken = default)
+        public async Task SendSubscriptionRequestAsync(string subscriptionId, object filter, CancellationToken cancellationToken = default)
         {
-            var subscriptionMessage = JsonSerializer.Serialize(new object[] { "REQ", subscriptionId, filters });
+            var subscriptionMessage = JsonSerializer.Serialize(new object[] { "REQ", subscriptionId, filter });
             await HandleOutgoingMessageAsync(subscriptionMessage, cancellationToken);
         }
 

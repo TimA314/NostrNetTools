@@ -1,4 +1,6 @@
 ﻿using NostrNetTools.Nostr.Connections;
+using NostrNetTools.Nostr.Events;
+using System.Text.Json;
 using Xunit;
 
 namespace NostrNetTests
@@ -13,7 +15,7 @@ namespace NostrNetTests
             // Arrange
             var nostrClient = new NostrClient(_testRelayUri);
             var subscriptionId = "testSubscription";
-            var filters = new
+            var filter = new
             {
                 kinds = new[] { 1 },
                 limit = 1
@@ -24,7 +26,7 @@ namespace NostrNetTests
             await Task.Delay(3000);
             Assert.True(nostrClient.IsConnected);
 
-            await nostrClient.SendSubscriptionRequestAsync(subscriptionId, filters);
+            await nostrClient.SendSubscriptionRequestAsync(subscriptionId, filter);
 
             // Assert
             bool messageReceived = false;
@@ -33,11 +35,12 @@ namespace NostrNetTests
                 if (!string.IsNullOrEmpty(message))
                 {
                     messageReceived = true;
+                    var nostrEventMessage = JsonSerializer.Deserialize<NostrEventMessage>(message);
                 }
             };
 
             // Use a delay to allow time for messages to be received
-            Thread.Sleep(3000);
+            Thread.Sleep(9000);
             await nostrClient.DisconnectAsync();
 
             Assert.True(messageReceived);
