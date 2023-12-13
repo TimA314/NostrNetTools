@@ -1,8 +1,12 @@
-﻿using System.Net.WebSockets;
+﻿using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Security;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using NostrNetTools.Nostr.Events;
+using NostrNetTools.Nostr.NIP11;
 
 namespace NostrNetTools.Nostr.Connections
 {
@@ -36,6 +40,10 @@ namespace NostrNetTools.Nostr.Connections
 
             _websocket.Dispose();
             _websocket = new ClientWebSocket();
+            _websocket.Options.HttpVersion = HttpVersion.Version11;
+            _websocket.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
+
+
             try
             {
                 await _websocket.ConnectAsync(_relay, cancellationToken);

@@ -1,6 +1,4 @@
 ﻿using NostrNetTools.Nostr.Connections;
-using System.Net.WebSockets;
-using System.Text.Json;
 using Xunit;
 
 namespace NostrNetTests
@@ -23,6 +21,7 @@ namespace NostrNetTests
 
             // Act
             await nostrClient.ConnectAsync();
+            await Task.Delay(3000);
             Assert.True(nostrClient.IsConnected, "Client should be connected");
 
             await nostrClient.SendSubscriptionRequestAsync(subscriptionId, filters);
@@ -38,7 +37,6 @@ namespace NostrNetTests
             };
 
             // Use a delay to allow time for messages to be received
-            await Task.Delay(10000);
 
             await nostrClient.DisconnectAsync();
 
