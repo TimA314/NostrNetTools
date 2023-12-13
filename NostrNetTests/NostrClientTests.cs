@@ -22,7 +22,7 @@ namespace NostrNetTests
             // Act
             await nostrClient.ConnectAsync();
             await Task.Delay(3000);
-            Assert.True(nostrClient.IsConnected, "Client should be connected");
+            Assert.True(nostrClient.IsConnected);
 
             await nostrClient.SendSubscriptionRequestAsync(subscriptionId, filters);
 
@@ -37,10 +37,10 @@ namespace NostrNetTests
             };
 
             // Use a delay to allow time for messages to be received
-
+            Thread.Sleep(3000);
             await nostrClient.DisconnectAsync();
 
-            Assert.True(messageReceived, "Should have received at least one message from the relay");
+            Assert.True(messageReceived);
         }
     }
 }

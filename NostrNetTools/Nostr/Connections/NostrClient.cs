@@ -41,8 +41,6 @@ namespace NostrNetTools.Nostr.Connections
             _websocket.Dispose();
             _websocket = new ClientWebSocket();
             _websocket.Options.HttpVersion = HttpVersion.Version11;
-            _websocket.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher;
-
 
             try
             {
