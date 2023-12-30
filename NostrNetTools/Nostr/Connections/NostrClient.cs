@@ -17,11 +17,14 @@ namespace NostrNetTools.Nostr.Connections
         private CancellationTokenSource _cancellationTokenSource;
         private readonly Channel<string> _pendingIncomingMessages = Channel.CreateUnbounded<string>();
         private readonly Channel<string> _pendingOutgoingMessages = Channel.CreateUnbounded<string>();
+        
         public event EventHandler<string>? MessageReceived;
         public event EventHandler<string>? NoticeReceived;
         public event EventHandler<(string subscriptionId, NostrEvent[] events)>? EventsReceived;
         public event EventHandler<(string eventId, bool success, string message)>? OkReceived;
         public event EventHandler<string>? EoseReceived;
+        public event EventHandler<(string subscriptionId, string message)>? ClosedReceived;
+
         public bool IsConnected => _websocket.State == WebSocketState.Open;
 
         public NostrClient(Uri relay)
@@ -44,6 +47,7 @@ namespace NostrNetTools.Nostr.Connections
 
             try
             {
+                Console.WriteLine($"Connecting to {_relay}");
                 await _websocket.ConnectAsync(_relay, cancellationToken);
                 _ = ListenForMessagesAsync(cancellationToken);
             }
@@ -72,6 +76,7 @@ namespace NostrNetTools.Nostr.Connections
         public async Task SendSubscriptionRequestAsync(string subscriptionId, object filter, CancellationToken cancellationToken = default)
         {
             var subscriptionMessage = JsonSerializer.Serialize(new object[] { "REQ", subscriptionId, filter });
+            Console.WriteLine($"Sending subscription request: {subscriptionMessage}");
             await HandleOutgoingMessageAsync(subscriptionMessage, cancellationToken);
         }
 
@@ -94,6 +99,7 @@ namespace NostrNetTools.Nostr.Connections
                     while (!result.EndOfMessage);
 
                     var message = Encoding.UTF8.GetString(memoryStream.ToArray());
+                    Console.WriteLine($"Received message: {message}");
                     await _pendingIncomingMessages.Writer.WriteAsync(message, cancellationToken);
                     MessageReceived?.Invoke(this, message);
                 }
@@ -128,8 +134,34 @@ namespace NostrNetTools.Nostr.Connections
             try
             {
                 var json = JsonDocument.Parse(message).RootElement;
-                // Handle different message types
-                // ...
+                var messageType = json[0].GetString();
+                switch (messageType)
+                {
+                    case "EVENT":
+                        var receivedSubscriptionId = json[1].GetString();
+                        var nostrEvent = ParseNostrEvent(json[2]);
+                        EventsReceived?.Invoke(this, (receivedSubscriptionId, new[] { nostrEvent }));
+                        break;
+                    case "OK":
+                        var eventId = json[1].GetString();
+                        var isSuccess = json[2].GetBoolean();
+                        var okMessage = json[3].GetString();
+                        OkReceived?.Invoke(this, (eventId, isSuccess, okMessage));
+                        break;
+                    case "EOSE":
+                        var eoseSubscriptionId = json[1].GetString();
+                        EoseReceived?.Invoke(this, eoseSubscriptionId);
+                        break;
+                    case "CLOSED":
+                        var closedSubscriptionId = json[1].GetString();
+                        var closedMessage = json[2].GetString();
+                        ClosedReceived?.Invoke(this, (closedSubscriptionId, closedMessage));
+                        break;
+                    case "NOTICE":
+                        var noticeMessage = json[1].GetString();
+                        NoticeReceived?.Invoke(this, noticeMessage);
+                        break;
+                }
                 return true;
             }
             catch (JsonException ex)
@@ -138,6 +170,15 @@ namespace NostrNetTools.Nostr.Connections
                 return false;
             }
         }
+
+        // You will need to implement this method based on your event data structure
+        private NostrEvent ParseNostrEvent(JsonElement jsonElement)
+        {
+            Console.WriteLine($"Parsing event: {jsonElement}");
+            NostrEvent newEvent = JsonSerializer.Deserialize<NostrEvent>(jsonElement.GetRawText());
+            return newEvent;
+        }
+
 
         private async Task<bool> HandleOutgoingMessageAsync(string message, CancellationToken cancellationToken)
         {
