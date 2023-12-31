@@ -17,7 +17,7 @@ namespace NostrNetTests
             // Arrange
             var nostrClient = new NostrClient(_testRelayUri);
             var subscriptionId = "testSubscription";
-            var filter = new { kinds = new[] { 1 }, limit = 1 };
+            var filter = new { kinds = new[] { 1 }, limit = 10 };
 
             var messageReceived = false;
             var noticeReceived = false;
@@ -57,6 +57,7 @@ namespace NostrNetTests
                 new Uri("wss://nos.lol"),
                 new Uri("wss://nostr.kungfu-g.rip")
             };
+
             var subscriptionId = "testSubscription";
             var filter = new
             {
@@ -67,7 +68,7 @@ namespace NostrNetTests
             int eoseReceivedCount = 0;
             var eventsReceived = new List<NostrEvent>();
 
-            var pool = new Pool(relays, subscriptionId, filter);
+            var pool = new Pool(relays);
 
             pool.EventsReceived += (sender, e) =>
             {
@@ -77,7 +78,8 @@ namespace NostrNetTests
             pool.EoseReceived += (_, _) => eoseReceivedCount++;
 
             // Act
-            await pool.ConnectAndSubscribeAsync();
+            await pool.ConnectAsync();
+            await pool.SubscribeAsync(subscriptionId, filter);
 
             // Allow time for events to be received
             int timeout = 0;

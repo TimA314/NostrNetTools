@@ -5,10 +5,10 @@ namespace NostrNetTools.Nostr.Connections
     public class Pool : IDisposable
     {
         private readonly List<Uri> _relays;
-        private readonly string _subscriptionId;
-        private readonly object _filter;
         private readonly List<NostrClient> _clients = [];
         private readonly HashSet<string> _seenEventIds = [];
+        private readonly Dictionary<string, object> _subscriptions = [];
+
 
         public event EventHandler<string>? NoticeReceived;
         public event EventHandler<(string eventId, bool success, string message)>? OkReceived;
@@ -18,12 +18,9 @@ namespace NostrNetTools.Nostr.Connections
 
         public event EventHandler<(string subscriptionId, NostrEvent[] events)>? EventsReceived;
 
-        public Pool(List<Uri> relays, string subscriptionId, object filter)
+        public Pool(List<Uri> relays)
         {
             _relays = relays ?? throw new ArgumentNullException(nameof(relays));
-            _subscriptionId = subscriptionId;
-            _filter = filter;
-
             InitializeClients();
         }
 
@@ -61,22 +58,33 @@ namespace NostrNetTools.Nostr.Connections
             ClosedReceived?.Invoke(this, e);
         }
 
-        public async Task ConnectAndSubscribeAsync()
+        public async Task ConnectAsync()
         {
             foreach (var client in _clients)
             {
                 await client.ConnectAsync();
-                await Task.Delay(3000);
-                await client.SendSubscriptionRequestAsync(_subscriptionId, _filter);
+            }
+        }
+
+        public async Task SubscribeAsync(string subscriptionId, object filter)
+        {
+            _subscriptions[subscriptionId] = filter;
+
+            foreach (var client in _clients)
+            {
+                await client.SendSubscriptionRequestAsync(subscriptionId, filter);
             }
         }
 
         private void OnEventsReceived(object? sender, (string subscriptionId, NostrEvent[] events) e)
         {
-            var uniqueEvents = e.events.Where(evt => _seenEventIds.Add(evt.Id)).ToArray();
-            if (uniqueEvents.Any())
+            if (_subscriptions.TryGetValue(e.subscriptionId, out var filter))
             {
-                EventsReceived?.Invoke(this, (_subscriptionId, uniqueEvents));
+                var uniqueEvents = e.events.Where(evt => _seenEventIds.Add(evt.Id)).ToArray();
+                if (uniqueEvents.Any())
+                {
+                    EventsReceived?.Invoke(this, (e.subscriptionId, uniqueEvents));
+                }
             }
         }
 

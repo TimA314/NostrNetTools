@@ -7,6 +7,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>Nostr Net Tools</Title>
     <Description>A C# nuget package for interacting with the Nostr protocol</Description>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
