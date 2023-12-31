@@ -19,5 +19,15 @@ namespace NostrNetTests
             Assert.NotNull(keys.KeySet.PublicKey.Hex);
             Assert.NotNull(keys.KeySet.PublicKey.Bech32);
         }
+
+        [Fact]
+        public void GetNpubFromHex()
+        {
+            Keys keys = new();
+            var npub = Keys.ConvertBech32ToNpub(keys.KeySet.PublicKey.Hex);
+
+            Assert.NotNull(npub);
+            Assert.Equal(keys.KeySet.PublicKey.Bech32, npub);
+        }
     }
 }

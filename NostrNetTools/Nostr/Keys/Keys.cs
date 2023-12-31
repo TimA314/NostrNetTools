@@ -84,5 +84,15 @@ namespace NostrNetTools.Nostr.Keys
             return pubKeySet;
         }
 
+        public static string ConvertBech32ToNpub(string publicKeyHex)
+        {
+            if (string.IsNullOrEmpty(publicKeyHex))
+            {
+                throw new ArgumentException("Public key hex cannot be null or empty", nameof(publicKeyHex));
+            }
+
+            var publicKeyBytes = KeyUtils.ToByteArray(publicKeyHex);
+            return Bech32.Encode("npub", publicKeyBytes);
+        }
     }
 }
