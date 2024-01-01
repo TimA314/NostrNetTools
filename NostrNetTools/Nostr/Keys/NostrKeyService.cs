@@ -4,20 +4,8 @@ using System.Security.Cryptography;
 
 namespace NostrNetTools.Nostr.Keys
 {
-    public class Keys
+    public class NostrKeyService
     {
-        public NostrKeySet KeySet { get; set; }
-
-        public Keys()
-        {
-            KeySet = GenerateNewKeySet();
-        }
-
-        public Keys(string nsec)
-        {
-            KeySet = GenerateKeySetFromNSec(nsec);
-        }  
-
         public NostrKeySet GenerateNewKeySet()
         {
             var privateKeySet = GenerateNewPrivateKeySet();
@@ -54,6 +42,24 @@ namespace NostrNetTools.Nostr.Keys
             };
         }
 
+        public NostrKeySet GenerateKeySetFromPrivateKeyHex(string privateKeyHex)
+        {
+            var privateKeyByte = KeyUtils.ToByteArray(privateKeyHex);
+            var ec = ECPrivKey.Create(privateKeyByte);
+            var privateKeySet = new PrivateKeySet
+            {
+                Hex = privateKeyHex,
+                EC = ec,
+                Bech32 = Bech32.Encode("nsec", privateKeyByte)
+            };
+
+            return new NostrKeySet
+            {
+                PrivateKey = privateKeySet,
+                PublicKey = GetPublicKeySetFromEcPrivKey(ec)
+            };
+        }   
+
 
         public PrivateKeySet GenerateNewPrivateKeySet()
         {
@@ -67,6 +73,7 @@ namespace NostrNetTools.Nostr.Keys
             privateKeySet.Bech32 = Bech32.Encode("nsec", privateKeyByte);
             return privateKeySet;
         }
+
 
         public PublicKeySet GetPublicKeySetFromEcPrivKey(ECPrivKey eCPrivKey)
         {
@@ -84,7 +91,7 @@ namespace NostrNetTools.Nostr.Keys
             return pubKeySet;
         }
 
-        public static string ConvertBech32ToNpub(string publicKeyHex)
+        public string ConvertBech32ToNpub(string publicKeyHex)
         {
             if (string.IsNullOrEmpty(publicKeyHex))
             {

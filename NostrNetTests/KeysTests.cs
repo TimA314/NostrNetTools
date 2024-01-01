@@ -9,25 +9,40 @@ namespace NostrNetTests
         [Fact]
         public void GenerateNewKeys()
         {
-            Keys keys = new();            
-            Assert.NotNull(keys.KeySet);
-            Assert.NotNull(keys.KeySet.PrivateKey);
-            Assert.NotNull(keys.KeySet.PublicKey);
-            Assert.NotNull(keys.KeySet.PrivateKey.Hex);
-            Assert.NotNull(keys.KeySet.PrivateKey.Bech32);
-            Assert.NotNull(keys.KeySet.PrivateKey.EC);
-            Assert.NotNull(keys.KeySet.PublicKey.Hex);
-            Assert.NotNull(keys.KeySet.PublicKey.Bech32);
+            NostrKeyService keyService = new();
+            NostrKeySet keySet = keyService.GenerateNewKeySet();
+            Assert.NotNull(keySet);
+            Assert.NotNull(keySet.PrivateKey);
+            Assert.NotNull(keySet.PublicKey);
+            Assert.NotNull(keySet.PrivateKey.Hex);
+            Assert.NotNull(keySet.PrivateKey.Bech32);
+            Assert.NotNull(keySet.PrivateKey.EC);
+            Assert.NotNull(keySet.PublicKey.Hex);
+            Assert.NotNull(keySet.PublicKey.Bech32);
         }
 
         [Fact]
         public void GetNpubFromHex()
         {
-            Keys keys = new();
-            var npub = Keys.ConvertBech32ToNpub(keys.KeySet.PublicKey.Hex);
+            NostrKeyService keyService = new();
+            NostrKeySet keySet = keyService.GenerateNewKeySet();
+            var npub = keyService.ConvertBech32ToNpub(keySet.PublicKey.Hex);
 
             Assert.NotNull(npub);
-            Assert.Equal(keys.KeySet.PublicKey.Bech32, npub);
+            Assert.Equal(keySet.PublicKey.Bech32, npub);
+        }
+
+        [Fact]
+        public void GetKeySetFromNsec()
+        {
+            NostrKeyService keyService = new();
+            NostrKeySet keySet = keyService.GenerateNewKeySet();
+
+            var newKeySet = keyService.GenerateKeySetFromNSec(keySet.PrivateKey.Bech32);
+
+            Assert.Equal(keySet.PrivateKey.Bech32, newKeySet.PrivateKey.Bech32);
+            Assert.Equal(keySet.PrivateKey.Hex, newKeySet.PrivateKey.Hex);
+            Assert.Equal(keySet.PrivateKey.EC, newKeySet.PrivateKey.EC);
         }
     }
 }
