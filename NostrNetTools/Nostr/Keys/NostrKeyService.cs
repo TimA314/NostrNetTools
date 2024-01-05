@@ -1,10 +1,11 @@
 ﻿using NBitcoin.Secp256k1;
+using NostrNetTools.Interfaces;
 using NostrNetTools.Utils;
 using System.Security.Cryptography;
 
 namespace NostrNetTools.Nostr.Keys
 {
-    public class NostrKeyService
+    public class NostrKeyService : INostrKeyService
     {
         public NostrKeySet GenerateNewKeySet()
         {
@@ -18,11 +19,11 @@ namespace NostrNetTools.Nostr.Keys
             };
         }
 
-        public NostrKeySet GenerateKeySetFromNSec(string nsec)
+        public NostrKeySet GenerateNostrKeySetFromNSec(string nsec)
         {
-            Bech32.Decode(nsec, out string hrp, out byte[] data);
+            Bech32.Decode(nsec, out string? hrp, out byte[]? data);
 
-            if (hrp != "nsec")
+            if (hrp != "nsec" || data is null)
             {
                 throw new Exception("Invalid nsec");
             }
@@ -32,11 +33,11 @@ namespace NostrNetTools.Nostr.Keys
 
             return new NostrKeySet()
             {
-                PrivateKey = new()
+                PrivateKey = new PrivateKeySet()
                 {
-                    Bech32 = nsec,
+                    EC = ec,
                     Hex = hex,
-                    EC = ec
+                    Nsec = nsec
                 },
                 PublicKey = GetPublicKeySetFromEcPrivKey(ec)
             };
@@ -46,11 +47,16 @@ namespace NostrNetTools.Nostr.Keys
         {
             var privateKeyByte = KeyUtils.ToByteArray(privateKeyHex);
             var ec = ECPrivKey.Create(privateKeyByte);
-            var privateKeySet = new PrivateKeySet
+            var nsec = Bech32.Encode("nsec", privateKeyByte);
+            if (nsec is null)
             {
-                Hex = privateKeyHex,
+                throw new Exception("Invalid private key");
+            }
+            var privateKeySet = new PrivateKeySet()
+            {
                 EC = ec,
-                Bech32 = Bech32.Encode("nsec", privateKeyByte)
+                Hex = privateKeyHex,
+                Nsec = nsec
             };
 
             return new NostrKeySet
@@ -60,38 +66,62 @@ namespace NostrNetTools.Nostr.Keys
             };
         }   
 
-
         public PrivateKeySet GenerateNewPrivateKeySet()
         {
-            PrivateKeySet privateKeySet = new();
             using RandomNumberGenerator randomNumberGenerator = RandomNumberGenerator.Create();
             byte[] array = new byte[32];
             randomNumberGenerator.GetBytes(array);
-            privateKeySet.Hex = array.ToHex();
-            byte[] privateKeyByte = KeyUtils.ToByteArray(privateKeySet.Hex);
-            privateKeySet.EC = ECPrivKey.Create(privateKeyByte);
-            privateKeySet.Bech32 = Bech32.Encode("nsec", privateKeyByte);
-            return privateKeySet;
-        }
+            var privateKeySetHex = array.ToHex();
+            byte[] privateKeyByte = KeyUtils.ToByteArray(privateKeySetHex);
+            var privateKeySetEC = ECPrivKey.Create(privateKeyByte);
 
+            var nsec = Bech32.Encode("nsec", privateKeyByte);
+            if (nsec is null)
+            {
+                throw new Exception("Invalid nsec");
+            }
+
+            return new PrivateKeySet()
+            {
+                EC = privateKeySetEC,
+                Hex = privateKeySetHex,
+                Nsec = nsec
+            };
+        }
 
         public PublicKeySet GetPublicKeySetFromEcPrivKey(ECPrivKey eCPrivKey)
         {
-            PublicKeySet pubKeySet = new();
-            pubKeySet.ECXOnly = eCPrivKey.CreateXOnlyPubKey();
-            pubKeySet.Hex = pubKeySet.ECXOnly.ToBytes().ToHex();
+            var pubkeyECXOnly = eCPrivKey.CreateXOnlyPubKey();
+            var pubkeyHex = pubkeyECXOnly.ToBytes().ToHex();
+            var npub = ConvertPubkeyHexToNpub(pubkeyHex);
 
-            if (string.IsNullOrWhiteSpace(pubKeySet.Hex))
+            return new PublicKeySet()
             {
-                throw new Exception("Public Key Hex is null or empty");
-            }
-
-            pubKeySet.Bech32 = Bech32.Encode("npub", KeyUtils.ToByteArray(pubKeySet.Hex));
-
-            return pubKeySet;
+                ECXOnly = pubkeyECXOnly,
+                Hex = pubkeyHex,
+                Npub = npub
+            };
         }
 
-        public string ConvertBech32ToNpub(string publicKeyHex)
+        public string ConvertPrivateKeyHexToNsec(string privateKeyHex)
+        {
+            if (string.IsNullOrEmpty(privateKeyHex))
+            {
+                throw new ArgumentException("Private key hex cannot be null or empty", nameof(privateKeyHex));
+            }
+
+            var privateKeyBytes = KeyUtils.ToByteArray(privateKeyHex);
+            var nsec = Bech32.Encode("nsec", privateKeyBytes);
+
+            if (nsec is null)
+            {
+                throw new Exception("Invalid Private Key");
+            }
+
+            return nsec;
+        }   
+
+        public string ConvertPubkeyHexToNpub(string publicKeyHex)
         {
             if (string.IsNullOrEmpty(publicKeyHex))
             {
@@ -99,7 +129,48 @@ namespace NostrNetTools.Nostr.Keys
             }
 
             var publicKeyBytes = KeyUtils.ToByteArray(publicKeyHex);
-            return Bech32.Encode("npub", publicKeyBytes);
+            var npub = Bech32.Encode("npub", publicKeyBytes);
+            if (npub is null)
+            {
+                throw new Exception("Invalid pubkey");
+            }
+            return npub;
+        }
+
+        public string ConvertNpubToPubkeyHex(string npub)
+        {
+            Bech32.Decode(npub, out string? hrp, out byte[]? data);
+
+            if (hrp != "npub" || data is null)
+            {
+                throw new Exception("Invalid npub");
+            }
+
+            return data.ToHex();
+        }
+
+        public ECXOnlyPubKey ConvertNpubToECXOnly(string npub)
+        {
+            Bech32.Decode(npub, out string? hrp, out byte[]? data);
+
+            if (hrp != "npub" || data is null)
+            {
+                throw new Exception("Invalid npub");
+            }
+
+            return ECXOnlyPubKey.Create(data);
+        } 
+
+        public string ConvertNsecToPrivateKeyHex(string nsec)
+        {
+            Bech32.Decode(nsec, out string? hrp, out byte[]? data);
+
+            if (hrp != "nsec" || data is null)
+            {
+                throw new Exception("Invalid nsec");
+            }
+
+            return data.ToHex();
         }
     }
 }

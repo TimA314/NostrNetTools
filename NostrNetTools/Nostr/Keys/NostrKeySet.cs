@@ -4,21 +4,21 @@ namespace NostrNetTools.Nostr.Keys
 {
     public class NostrKeySet
     {
-        public PrivateKeySet PrivateKey { get; set; } = new PrivateKeySet();
-        public PublicKeySet PublicKey { get; set; } = new PublicKeySet();
+        public PrivateKeySet PrivateKey { get; set; }
+        public PublicKeySet PublicKey { get; set; }
     }
 
     public class PrivateKeySet
     {
         public string Hex { get; set; }
-        public string Bech32 { get; set; }
+        public string Nsec { get; set; }
         public ECPrivKey EC { get; set; }
     }
 
     public class PublicKeySet
     {
         public string Hex { get; set; }
-        public string Bech32 { get; set; }
+        public string Npub { get; set; }
         public ECXOnlyPubKey ECXOnly { get; set; }
     }
 }
