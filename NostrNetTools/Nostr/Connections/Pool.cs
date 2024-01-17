@@ -1,27 +1,69 @@
-﻿using NostrNetTools.Nostr.Events;
+﻿using NostrNetTools.Interfaces;
+using NostrNetTools.Nostr.Events;
 
 namespace NostrNetTools.Nostr.Connections
 {
-    public class Pool : IDisposable
+    public class Pool : IPool
     {
         private readonly List<Uri> _relays;
         private readonly List<NostrClient> _clients = [];
         private readonly HashSet<string> _seenEventIds = [];
         private readonly Dictionary<string, object> _subscriptions = [];
 
-
         public event EventHandler<string>? NoticeReceived;
         public event EventHandler<(string eventId, bool success, string message)>? OkReceived;
         public event EventHandler<string>? EoseReceived;
         public event EventHandler<(string subscriptionId, string message)>? ClosedReceived;
-
-
         public event EventHandler<(string subscriptionId, NostrEvent[] events)>? EventsReceived;
 
-        public Pool(List<Uri> relays)
+        public Pool(List<Uri> relays, INostrClient )
         {
             _relays = relays ?? throw new ArgumentNullException(nameof(relays));
             InitializeClients();
+        }
+
+        public async Task ConnectAsync()
+        {
+            foreach (var client in _clients)
+            {
+                await client.ConnectAsync();
+            }
+        }
+
+        public async Task SubscribeAsync(string subscriptionId, object filter)
+        {
+            _subscriptions[subscriptionId] = filter;
+
+            foreach (var client in _clients)
+            {
+                await client.SendSubscriptionRequestAsync(subscriptionId, filter);
+            }
+        }
+
+        public async Task PublishEventAsync(NostrEvent nostrEvent)
+        {
+            foreach (var client in _clients)
+            {
+                await client.PublishEventAsync(nostrEvent);
+            }
+        }
+            
+        public async Task DisconnectAsync()
+        {
+            foreach (var client in _clients)
+            {
+                await client.DisconnectAsync();
+            }
+
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            foreach (var client in _clients)
+            {
+                client.Dispose();
+            }
         }
 
         private void InitializeClients()
@@ -58,24 +100,6 @@ namespace NostrNetTools.Nostr.Connections
             ClosedReceived?.Invoke(this, e);
         }
 
-        public async Task ConnectAsync()
-        {
-            foreach (var client in _clients)
-            {
-                await client.ConnectAsync();
-            }
-        }
-
-        public async Task SubscribeAsync(string subscriptionId, object filter)
-        {
-            _subscriptions[subscriptionId] = filter;
-
-            foreach (var client in _clients)
-            {
-                await client.SendSubscriptionRequestAsync(subscriptionId, filter);
-            }
-        }
-
         private void OnEventsReceived(object? sender, (string subscriptionId, NostrEvent[] events) e)
         {
             if (_subscriptions.TryGetValue(e.subscriptionId, out var filter))
@@ -85,22 +109,6 @@ namespace NostrNetTools.Nostr.Connections
                 {
                     EventsReceived?.Invoke(this, (e.subscriptionId, uniqueEvents));
                 }
-            }
-        }
-
-        public async Task DisconnectAsync()
-        {
-            foreach (var client in _clients)
-            {
-                await client.DisconnectAsync();
-            }
-        }
-
-        public void Dispose()
-        {
-            foreach (var client in _clients)
-            {
-                client.Dispose();
             }
         }
     }

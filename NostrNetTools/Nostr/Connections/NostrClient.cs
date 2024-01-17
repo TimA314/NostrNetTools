@@ -1,16 +1,14 @@
 ﻿using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using NostrNetTools.Interfaces;
 using NostrNetTools.Nostr.Events;
-using NostrNetTools.Nostr.NIP11;
 
 namespace NostrNetTools.Nostr.Connections
 {
-    public class NostrClient : IDisposable
+    public class NostrClient : INostrClient
     {
         private readonly Uri _relay;
         private ClientWebSocket _websocket;
@@ -45,23 +43,40 @@ namespace NostrNetTools.Nostr.Connections
             _websocket = new ClientWebSocket();
             _websocket.Options.HttpVersion = HttpVersion.Version11;
 
-            try
+            int retryCount = 0;
+            const int maxRetries = 3;
+            while (retryCount < maxRetries)
             {
-                Console.WriteLine($"Connecting to {_relay}");
-                await _websocket.ConnectAsync(_relay, cancellationToken);
-                _ = ListenForMessagesAsync(cancellationToken);
-            }
-            catch (WebSocketException ex)
-            {
-                Console.WriteLine($"WebSocketException: {ex.Message}");
-                if (ex.InnerException != null)
+                try
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    Console.WriteLine($"Connecting to {_relay}");
+                    await _websocket.ConnectAsync(_relay, cancellationToken);
+                    _ = ListenForMessagesAsync(cancellationToken);
+                    return;
                 }
-                throw new NostrClientException("Failed to connect to the relay.", ex);
+                catch (WebSocketException ex)
+                {
+                    Console.WriteLine($"WebSocketException: {ex.Message}");
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        throw new NostrClientException("Failed to connect to the relay after retries.", ex);
+                    }
+                    await Task.Delay(1000 * retryCount, cancellationToken);
+                }
             }
         }
 
+        public async Task PublishEventAsync(NostrEvent nostrEvent, CancellationToken cancellationToken = default)
+        {
+            if (!IsConnected)
+            {
+                await ConnectAsync(cancellationToken);
+            }
+
+            var eventMessage = JsonSerializer.Serialize(new object[] { "EVENT", nostrEvent });
+            await HandleOutgoingMessageAsync(eventMessage, cancellationToken);
+        }
 
         public async Task DisconnectAsync()
         {
@@ -107,7 +122,7 @@ namespace NostrNetTools.Nostr.Connections
             catch (WebSocketException ex)
             {
                 // Handle WebSocket exceptions
-                // Optionally, raise an event or log the exception
+                // Raise an event or log the exception
             }
             finally
             {
@@ -166,7 +181,12 @@ namespace NostrNetTools.Nostr.Connections
             }
             catch (JsonException ex)
             {
-                // Handle JSON parsing errors
+                Console.WriteLine($"JSON Parsing Error: {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unexpected Error: {ex.Message}");
                 return false;
             }
         }
@@ -184,17 +204,24 @@ namespace NostrNetTools.Nostr.Connections
         {
             try
             {
-                if (_websocket.State == WebSocketState.Open)
+                if (_websocket.State != WebSocketState.Open)
                 {
-                    var buffer = Encoding.UTF8.GetBytes(message);
-                    await _websocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, cancellationToken);
-                    return true;
+                    Console.WriteLine("WebSocket is not open. Unable to send message.");
+                    return false;
                 }
-                return false;
+
+                var buffer = Encoding.UTF8.GetBytes(message);
+                await _websocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, cancellationToken);
+                return true;
             }
             catch (WebSocketException ex)
             {
-                // Handle WebSocket exceptions
+                Console.WriteLine($"WebSocket Exception: {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unexpected Error: {ex.Message}");
                 return false;
             }
         }
@@ -215,12 +242,16 @@ namespace NostrNetTools.Nostr.Connections
 
         public void Dispose()
         {
-            _cancellationTokenSource.Cancel();
-            _cancellationTokenSource.Dispose();
-            _websocket.Dispose();
+            if(_cancellationTokenSource != null)
+            {
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+            }
+            if (_websocket != null)
+            {
+                _websocket.Dispose();
+            }
         }
-
-        // Add additional methods for subscription management, event publishing, etc.
     }
 
     public class NostrClientException : Exception
