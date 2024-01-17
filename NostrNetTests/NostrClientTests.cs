@@ -83,7 +83,7 @@ namespace NostrNetTests
 
             // Allow time for events to be received
             int timeout = 0;
-            while (eoseReceivedCount < relays.Count && timeout <= 30)
+            while (eoseReceivedCount < relays.Count && timeout <= 10)
             {
                 timeout++;
                 await Task.Delay(1000);

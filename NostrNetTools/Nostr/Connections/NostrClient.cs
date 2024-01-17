@@ -121,7 +121,7 @@ namespace NostrNetTools.Nostr.Connections
             }
             catch (WebSocketException ex)
             {
-                // Handle WebSocket exceptions
+                // TODO Handle WebSocket exceptions
                 // Raise an event or log the exception
             }
             finally
@@ -140,7 +140,7 @@ namespace NostrNetTools.Nostr.Connections
             }
             catch (OperationCanceledException)
             {
-                // Handle cancellation
+                // TODO Handle cancellation
             }
         }
 
@@ -191,7 +191,6 @@ namespace NostrNetTools.Nostr.Connections
             }
         }
 
-        // You will need to implement this method based on your event data structure
         private NostrEvent ParseNostrEvent(JsonElement jsonElement)
         {
             Console.WriteLine($"Parsing event: {jsonElement}");
@@ -234,7 +233,7 @@ namespace NostrNetTools.Nostr.Connections
                 {
                     if (!await processor(item, cancellationToken))
                     {
-                        // Handle failed processing
+                        // TODO Handle failed processing
                     }
                 }
             }

@@ -16,7 +16,7 @@ namespace NostrNetTools.Nostr.Connections
         public event EventHandler<(string subscriptionId, string message)>? ClosedReceived;
         public event EventHandler<(string subscriptionId, NostrEvent[] events)>? EventsReceived;
 
-        public Pool(List<Uri> relays, INostrClient )
+        public Pool(List<Uri> relays)
         {
             _relays = relays ?? throw new ArgumentNullException(nameof(relays));
             InitializeClients();
