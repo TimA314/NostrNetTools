@@ -1,5 +1,6 @@
 ﻿using NostrNetTools.Interfaces;
 using NostrNetTools.Nostr.Events;
+using NostrNetTools.Nostr.Events.NostrNetTools.Nostr.Events;
 
 namespace NostrNetTools.Nostr.Connections
 {

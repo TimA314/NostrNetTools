@@ -1,7 +1,5 @@
 ﻿using NostrNetTools.Nostr.Connections;
 using NostrNetTools.Nostr.Events;
-using System.Text.Json;
-using System.Threading;
 using Xunit;
 
 

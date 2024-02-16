@@ -1,4 +1,6 @@
-﻿namespace NostrNetTools.Nostr.Events
+﻿using NostrNetTools.Nostr.Events.NostrNetTools.Nostr.Events;
+
+namespace NostrNetTools.Nostr.Events
 {
     public class NostrEventMessage
     {
