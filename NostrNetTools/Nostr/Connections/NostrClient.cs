@@ -43,28 +43,12 @@ namespace NostrNetTools.Nostr.Connections
             _websocket = new ClientWebSocket();
             _websocket.Options.HttpVersion = HttpVersion.Version11;
 
-            int retryCount = 0;
-            const int maxRetries = 3;
-            while (retryCount < maxRetries)
+            await _websocket.ConnectAsync(_relay, cancellationToken);
+            if (_websocket.State != WebSocketState.Open)
             {
-                try
-                {
-                    Console.WriteLine($"Connecting to {_relay}");
-                    await _websocket.ConnectAsync(_relay, cancellationToken);
-                    _ = ListenForMessagesAsync(cancellationToken);
-                    return;
-                }
-                catch (WebSocketException ex)
-                {
-                    Console.WriteLine($"WebSocketException: {ex.Message}");
-                    retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        throw new NostrClientException("Failed to connect to the relay after retries.", ex);
-                    }
-                    await Task.Delay(1000 * retryCount, cancellationToken);
-                }
+                throw new NostrClientException("Failed to connect to WebSocket.", new Exception($"Websocket State: {_websocket.State}"));
             }
+            _ = ListenForMessagesAsync(cancellationToken);
         }
 
         public async Task PublishEventAsync(NostrEvent nostrEvent, CancellationToken cancellationToken = default)
@@ -77,7 +61,7 @@ namespace NostrNetTools.Nostr.Connections
 
         public async Task DisconnectAsync()
         {
-            if (_websocket.State != WebSocketState.Open)
+            if (_websocket is null || _websocket.State != WebSocketState.Open)
                 return;
 
             _cancellationTokenSource.Cancel();
@@ -120,8 +104,7 @@ namespace NostrNetTools.Nostr.Connections
             }
             catch (WebSocketException ex)
             {
-                // TODO Handle WebSocket exceptions
-                // Raise an event or log the exception
+                throw new NostrClientException("WebSocket Exception while listening for messages.", ex);
             }
             finally
             {
@@ -137,9 +120,9 @@ namespace NostrNetTools.Nostr.Connections
                     ProcessChannel(_pendingIncomingMessages, HandleIncomingMessageAsync, _cancellationTokenSource.Token),
                     ProcessChannel(_pendingOutgoingMessages, HandleOutgoingMessageAsync, _cancellationTokenSource.Token));
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                // TODO Handle cancellation
+                throw new NostrClientException("Message Processing Error", ex);
             }
         }
 

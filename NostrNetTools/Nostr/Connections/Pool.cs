@@ -52,17 +52,13 @@ namespace NostrNetTools.Nostr.Connections
             
         public async Task DisconnectAsync()
         {
+            if (!_clients.Any(client => client.IsConnected))
+            {
+                return;
+            }
+          
             var disconnectTasks = _clients.Where(client => client.IsConnected).Select(client => client.DisconnectAsync());
             await Task.WhenAll(disconnectTasks);
-
-            foreach (var client in _clients)
-            {
-                DetachEventHandlers(client);
-                if (client is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-            }
         }
 
         public void Dispose()

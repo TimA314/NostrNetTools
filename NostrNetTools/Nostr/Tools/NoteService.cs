@@ -1,21 +1,19 @@
 ﻿using NostrNetTools.Interfaces;
-using NostrNetTools.Nostr.Connections;
 using NostrNetTools.Nostr.Events;
 using NostrNetTools.Nostr.Events.NostrNetTools.Nostr.Events;
-using NostrNetTools.Utils;
 
 namespace NostrNetTools.Nostr.Tools
 {
     public class NoteService : INoteService
     {
         private readonly IPool _pool;
-        private readonly NostrEventIdGenerator _nostrEventIdGenerator;
+        private readonly INostrEventService _nostrEventService;
 
 
-        public NoteService(IPool pool)
+        public NoteService(IPool pool, INostrEventService nostrEventService)
         {
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
-            _nostrEventIdGenerator = new NostrEventIdGenerator();
+            _nostrEventService = nostrEventService;
         }
 
         public async Task SignAndPublishNote(string privateKey, string publicKey, string content, List<NostrEventTag> tags)
@@ -33,21 +31,17 @@ namespace NostrNetTools.Nostr.Tools
                 PublicKey = publicKey,
             };
 
-            nostrEvent.Id = _nostrEventIdGenerator.GenerateEventId(nostrEvent);
+            var signedNostrEvent = _nostrEventService.SignNostrEvent(nostrEvent, privateKey);
 
-            // Example signing method - replace with actual signing logic
-            SignEvent(privateKey, ref nostrEvent);
-
-            await _pool.PublishEventAsync(nostrEvent);
+            await _pool.PublishEventAsync(signedNostrEvent);
             await _pool.DisconnectAsync();
         }
 
-        public async Task<HashSet<NostrEvent>> GetNotesById(HashSet<string> eventIdsToGet, HashSet<int> kinds)
+        public async Task<HashSet<NostrEvent>> GetNotesById(HashSet<string> eventIdsToGet)
         {
             var filter = new
             {
-                ids = eventIdsToGet.ToArray(),
-                kinds = kinds.ToArray(),
+                ids = eventIdsToGet.ToArray()
             };
 
             var eventsReceived = new HashSet<NostrEvent>();

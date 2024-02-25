@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NostrNetTools.Interfaces;
 using NostrNetTools.Nostr.Connections;
+using NostrNetTools.Nostr.Events;
+using NostrNetTools.Nostr.Keys;
 using NostrNetTools.Nostr.Tools;
 
 namespace NostrNetTests
@@ -21,9 +23,11 @@ namespace NostrNetTests
         {
             var serviceCollection = new ServiceCollection();
 
+            serviceCollection.AddSingleton<INostrKeyService, NostrKeyService>();
             serviceCollection.AddSingleton<INostrClient, NostrClient>();
             serviceCollection.AddSingleton<INostrClientFactory, NostrClientFactory>();
             serviceCollection.AddSingleton<IPool>(provider => new Pool(_relays, provider.GetRequiredService<INostrClientFactory>()));
+            serviceCollection.AddSingleton<INostrEventService>(provider => new NostrEventService(provider.GetRequiredService<INostrKeyService>()));
             serviceCollection.AddScoped<INoteService, NoteService>();
 
             ServiceProvider = serviceCollection.BuildServiceProvider();

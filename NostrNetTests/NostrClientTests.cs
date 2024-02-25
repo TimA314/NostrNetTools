@@ -35,7 +35,7 @@ namespace NostrNetTests
 
             // Allow time for events to be received
             int timeout = 0;
-            while (eoseReceivedCount < 4 /* Assuming 4 relays */ && timeout <= 10)
+            while (eoseReceivedCount < _pool.Relays.Count && timeout <= 10)
             {
                 timeout++;
                 await Task.Delay(1000);

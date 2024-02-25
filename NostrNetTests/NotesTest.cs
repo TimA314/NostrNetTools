@@ -21,7 +21,7 @@ namespace NostrNetTests
         public async Task GetNotes_ShouldReturnNotes()
         {
             // Arrange
-            var eventIdsToGet = new List<string> { "551176e56798776d03d7ef9c5bd27b3108be57a19282bb12365ff114f5dc7e64" };
+            var eventIdsToGet = new HashSet<string> { "551176e56798776d03d7ef9c5bd27b3108be57a19282bb12365ff114f5dc7e64" };
 
             // Act
             var retrievedNotes = await _noteService.GetNotesById(eventIdsToGet);
