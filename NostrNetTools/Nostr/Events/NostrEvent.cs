@@ -8,27 +8,26 @@ namespace NostrNetTools.Nostr.Events
         public class NostrEvent : IEqualityComparer<NostrEvent>
         {
             [JsonPropertyName("id")]
-            public string Id { get; set; }
+            public string? Id { get; set; }
 
             [JsonPropertyName("pubkey")]
-            public string PublicKey { get; set; }
+            public required string PublicKey { get; set; }
 
             [JsonPropertyName("created_at")]
-            [JsonConverter(typeof(UnixTimestampSecondsJsonConverter))]
-            public DateTimeOffset CreatedAt { get; set; }
+            public required long CreatedAt { get; set; }
 
             [JsonPropertyName("kind")]
-            public int Kind { get; set; }
+            public required int Kind { get; set; }
 
             [JsonPropertyName("content")]
             [JsonConverter(typeof(StringEscaperJsonConverter))]
-            public string Content { get; set; }
+            public required string Content { get; set; }
 
             [JsonPropertyName("tags")]
-            public List<List<string>> Tags { get; set; }
+            public required List<NostrEventTag> Tags { get; set; }
 
             [JsonPropertyName("sig")]
-            public string Signature { get; set; }
+            public string? Signature { get; set; }
 
             public bool Equals(NostrEvent? x, NostrEvent? y)
             {
@@ -39,7 +38,7 @@ namespace NostrNetTools.Nostr.Events
 
             public int GetHashCode(NostrEvent obj)
             {
-                return obj.Id.GetHashCode();
+                return obj.Id?.GetHashCode() ?? 0;
             }
         }
     }

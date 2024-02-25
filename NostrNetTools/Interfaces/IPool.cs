@@ -11,6 +11,9 @@ namespace NostrNetTools.Interfaces
         event EventHandler<(string subscriptionId, string message)> ClosedReceived;
         event EventHandler<(string subscriptionId, NostrEvent[] events)> EventsReceived;
 
+        List<Uri> Relays { get; }
+        int ConnectedClientsCount { get; }
+
         Task ConnectAsync();
         Task SubscribeAsync(string subscriptionId, object filter);
         Task PublishEventAsync(NostrEvent nostrEvent);

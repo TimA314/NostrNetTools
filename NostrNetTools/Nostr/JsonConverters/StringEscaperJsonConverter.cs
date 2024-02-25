@@ -98,15 +98,15 @@ namespace NostrNetTools.Nostr.JsonConverters
         {
             if (reader.TokenType == JsonTokenType.Null)
             {
-                return null;
+                return string.Empty;
             }
 
             if (reader.TokenType != JsonTokenType.String)
             {
-                throw new JsonException("value was not a string");
+                return string.Empty;
             }
 
-            return JavaScriptStringEncode(reader.GetString(), false);
+            return JavaScriptStringEncode(reader.GetString() ?? string.Empty, false);
         }
 
         public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)

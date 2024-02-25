@@ -1,5 +1,4 @@
 ﻿using NostrNetTools.Interfaces;
-using NostrNetTools.Nostr.Events;
 using NostrNetTools.Nostr.Events.NostrNetTools.Nostr.Events;
 
 namespace NostrNetTools.Nostr.Connections
@@ -7,9 +6,12 @@ namespace NostrNetTools.Nostr.Connections
     public class Pool : IPool
     {
         private readonly List<Uri> _relays;
-        private readonly List<NostrClient> _clients = [];
-        private readonly HashSet<string> _seenEventIds = [];
-        private readonly Dictionary<string, object> _subscriptions = [];
+        private readonly List<INostrClient> _clients = new();
+        private readonly HashSet<string> _seenEventIds = new();
+        private readonly Dictionary<string, object> _subscriptions = new();
+        private readonly INostrClientFactory _clientFactory;
+        public List<Uri> Relays => _relays;
+        public int ConnectedClientsCount => _clients.Count(client => client.IsConnected);
 
         public event EventHandler<string>? NoticeReceived;
         public event EventHandler<(string eventId, bool success, string message)>? OkReceived;
@@ -17,53 +19,60 @@ namespace NostrNetTools.Nostr.Connections
         public event EventHandler<(string subscriptionId, string message)>? ClosedReceived;
         public event EventHandler<(string subscriptionId, NostrEvent[] events)>? EventsReceived;
 
-        public Pool(List<Uri> relays)
+        public Pool(List<Uri> relays, INostrClientFactory clientFactory)
         {
-            _relays = relays ?? throw new ArgumentNullException(nameof(relays));
+            if (relays is null) throw new ArgumentNullException(nameof(relays));
+            if (relays.Count <= 0) throw new ArgumentException("At least one relay is required.", nameof(relays));
+            if (clientFactory is null) throw new ArgumentNullException(nameof(clientFactory));
+
+            _relays = relays;
+            _clientFactory = clientFactory;
             InitializeClients();
         }
 
         public async Task ConnectAsync()
         {
-            foreach (var client in _clients)
-            {
-                await client.ConnectAsync();
-            }
+            var connectTasks = _clients.Select(client => client.ConnectAsync());
+            await Task.WhenAll(connectTasks);
         }
 
         public async Task SubscribeAsync(string subscriptionId, object filter)
         {
             _subscriptions[subscriptionId] = filter;
 
-            foreach (var client in _clients)
-            {
-                await client.SendSubscriptionRequestAsync(subscriptionId, filter);
-            }
+            var subscriptionTasks = _clients.Select(client => client.SendSubscriptionRequestAsync(subscriptionId, filter));
+            await Task.WhenAll(subscriptionTasks);
         }
 
         public async Task PublishEventAsync(NostrEvent nostrEvent)
         {
-            foreach (var client in _clients)
-            {
-                await client.PublishEventAsync(nostrEvent);
-            }
+            var publishTasks = _clients.Select(client => client.PublishEventAsync(nostrEvent));
+            await Task.WhenAll(publishTasks);
         }
             
         public async Task DisconnectAsync()
         {
+            var disconnectTasks = _clients.Where(client => client.IsConnected).Select(client => client.DisconnectAsync());
+            await Task.WhenAll(disconnectTasks);
+
             foreach (var client in _clients)
             {
-                await client.DisconnectAsync();
+                DetachEventHandlers(client);
+                if (client is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
-
-            Dispose();
         }
 
         public void Dispose()
         {
             foreach (var client in _clients)
             {
-                client.Dispose();
+                if (client is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
         }
 
@@ -71,14 +80,28 @@ namespace NostrNetTools.Nostr.Connections
         {
             foreach (var relay in _relays)
             {
-                var client = new NostrClient(relay);
-                client.EventsReceived += OnEventsReceived;
-                client.NoticeReceived += OnNoticeReceived;
-                client.OkReceived += OnOkReceived;
-                client.EoseReceived += OnEoseReceived;
-                client.ClosedReceived += OnClosedReceived;
+                var client = _clientFactory.CreateClient(relay);
+                AttachEventHandlers(client);
                 _clients.Add(client);
             }
+        }
+
+        private void AttachEventHandlers(INostrClient client)
+        {
+            client.EventsReceived += OnEventsReceived;
+            client.NoticeReceived += OnNoticeReceived;
+            client.OkReceived += OnOkReceived;
+            client.EoseReceived += OnEoseReceived;
+            client.ClosedReceived += OnClosedReceived;
+        }
+
+        private void DetachEventHandlers(INostrClient client)
+        {
+            client.EventsReceived -= OnEventsReceived;
+            client.NoticeReceived -= OnNoticeReceived;
+            client.OkReceived -= OnOkReceived;
+            client.EoseReceived -= OnEoseReceived;
+            client.ClosedReceived -= OnClosedReceived;
         }
 
         private void OnNoticeReceived(object sender, string message)

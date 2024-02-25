@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using NostrNetTools.Interfaces;
-using NostrNetTools.Nostr.Events;
 using NostrNetTools.Nostr.Events.NostrNetTools.Nostr.Events;
 
 namespace NostrNetTools.Nostr.Connections
@@ -12,6 +11,9 @@ namespace NostrNetTools.Nostr.Connections
     public class NostrClient : INostrClient
     {
         private readonly Uri _relay;
+        public Uri Relay => _relay;
+        public bool IsConnected => _websocket.State == WebSocketState.Open;
+
         private ClientWebSocket _websocket;
         private CancellationTokenSource _cancellationTokenSource;
         private readonly Channel<string> _pendingIncomingMessages = Channel.CreateUnbounded<string>();
@@ -24,23 +26,20 @@ namespace NostrNetTools.Nostr.Connections
         public event EventHandler<string>? EoseReceived;
         public event EventHandler<(string subscriptionId, string message)>? ClosedReceived;
 
-        public bool IsConnected => _websocket.State == WebSocketState.Open;
 
         public NostrClient(Uri relay)
         {
             _relay = relay ?? throw new ArgumentNullException(nameof(relay));
             _websocket = new ClientWebSocket();
             _cancellationTokenSource = new CancellationTokenSource();
-
-            StartMessageProcessing();
+            _ = StartMessageProcessing();
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken = default)
         {
-            if (_websocket.State == WebSocketState.Open)
-                return;
+            if (IsConnected || _websocket.State == WebSocketState.Open) return;
 
-            _websocket.Dispose();
+            _websocket?.Dispose();
             _websocket = new ClientWebSocket();
             _websocket.Options.HttpVersion = HttpVersion.Version11;
 
@@ -70,10 +69,7 @@ namespace NostrNetTools.Nostr.Connections
 
         public async Task PublishEventAsync(NostrEvent nostrEvent, CancellationToken cancellationToken = default)
         {
-            if (!IsConnected)
-            {
-                await ConnectAsync(cancellationToken);
-            }
+            if (!IsConnected) await ConnectAsync(cancellationToken);
 
             var eventMessage = JsonSerializer.Serialize(new object[] { "EVENT", nostrEvent });
             await HandleOutgoingMessageAsync(eventMessage, cancellationToken);
@@ -91,6 +87,8 @@ namespace NostrNetTools.Nostr.Connections
 
         public async Task SendSubscriptionRequestAsync(string subscriptionId, object filter, CancellationToken cancellationToken = default)
         {
+            if (!IsConnected) await ConnectAsync(cancellationToken);
+
             var subscriptionMessage = JsonSerializer.Serialize(new object[] { "REQ", subscriptionId, filter });
             Console.WriteLine($"Sending subscription request: {subscriptionMessage}");
             await HandleOutgoingMessageAsync(subscriptionMessage, cancellationToken);
@@ -131,7 +129,7 @@ namespace NostrNetTools.Nostr.Connections
             }
         }
 
-        private async void StartMessageProcessing()
+        private async Task StartMessageProcessing()
         {
             try
             {
@@ -145,7 +143,9 @@ namespace NostrNetTools.Nostr.Connections
             }
         }
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         private async Task<bool> HandleIncomingMessageAsync(string message, CancellationToken cancellationToken)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             try
             {
@@ -154,27 +154,28 @@ namespace NostrNetTools.Nostr.Connections
                 switch (messageType)
                 {
                     case "EVENT":
-                        var receivedSubscriptionId = json[1].GetString();
+                        var receivedSubscriptionId = json[1].GetString() ?? "Unknown-Subscription-Id";
                         var nostrEvent = ParseNostrEvent(json[2]);
                         EventsReceived?.Invoke(this, (receivedSubscriptionId, new[] { nostrEvent }));
                         break;
                     case "OK":
                         var eventId = json[1].GetString();
+                        if (eventId is null) return false;
                         var isSuccess = json[2].GetBoolean();
-                        var okMessage = json[3].GetString();
+                        var okMessage = json[3].GetString() ?? "OK";
                         OkReceived?.Invoke(this, (eventId, isSuccess, okMessage));
                         break;
                     case "EOSE":
-                        var eoseSubscriptionId = json[1].GetString();
+                        var eoseSubscriptionId = json[1].GetString() ?? "Unknown-Subscription-Id";
                         EoseReceived?.Invoke(this, eoseSubscriptionId);
                         break;
                     case "CLOSED":
-                        var closedSubscriptionId = json[1].GetString();
-                        var closedMessage = json[2].GetString();
+                        var closedSubscriptionId = json[1].GetString() ?? "Unknown-Subscription-Id";
+                        var closedMessage = json[2].GetString() ?? "CLOSED";
                         ClosedReceived?.Invoke(this, (closedSubscriptionId, closedMessage));
                         break;
                     case "NOTICE":
-                        var noticeMessage = json[1].GetString();
+                        var noticeMessage = json[1].GetString() ?? "NOTICE";
                         NoticeReceived?.Invoke(this, noticeMessage);
                         break;
                 }
@@ -195,7 +196,11 @@ namespace NostrNetTools.Nostr.Connections
         private NostrEvent ParseNostrEvent(JsonElement jsonElement)
         {
             Console.WriteLine($"Parsing event: {jsonElement}");
-            NostrEvent newEvent = JsonSerializer.Deserialize<NostrEvent>(jsonElement.GetRawText());
+            var newEvent = JsonSerializer.Deserialize<NostrEvent>(jsonElement.GetRawText());
+            if (newEvent is null)
+            {
+                throw new NostrClientException("Failed to parse NostrEvent from JSON.", new Exception($"Invalid JSON: {jsonElement}"));
+            }
             return newEvent;
         }
 

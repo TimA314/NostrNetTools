@@ -4,14 +4,14 @@ using System.Text.Json;
 
 namespace NostrNetTools.Utils
 {
-    public static class NostrEventIdGenerator
+    public class NostrEventIdGenerator
     {
-        private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
-        public static string GenerateEventId(NostrEvent nostrEvent)
+        public string GenerateEventId(NostrEvent nostrEvent)
         {
             var serializedEvent = SerializeEvent(nostrEvent);
 
@@ -22,13 +22,13 @@ namespace NostrNetTools.Utils
             return eventId;
         }
 
-        private static string SerializeEvent(NostrEvent nostrEvent)
+        private string SerializeEvent(NostrEvent nostrEvent)
         {
             string serializedEvent = JsonSerializer.Serialize(new object[]
             {
                 0,
                 nostrEvent.PublicKey,
-                nostrEvent.CreatedAt.ToUnixTimeSeconds(),
+                nostrEvent.CreatedAt,
                 nostrEvent.Kind,
                 nostrEvent.Tags,
                 nostrEvent.Content
@@ -37,16 +37,13 @@ namespace NostrNetTools.Utils
             return serializedEvent;
         }
 
-        private static byte[] CalculateSha256(string serializedEvent)
+        private byte[] CalculateSha256(string serializedEvent)
         {
-            using var sha256 = new NBitcoin.Secp256k1.SHA256();
-            sha256.Initialize();
-            var dataBytes = Encoding.UTF8.GetBytes(serializedEvent);
-            sha256.Write(dataBytes);
-            return sha256.GetHash();
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            return sha256.ComputeHash(Encoding.UTF8.GetBytes(serializedEvent));
         }
 
-        private static string ByteArrayToHex(byte[] bytes)
+        private string ByteArrayToHex(byte[] bytes)
         {
             var sb = new StringBuilder(bytes.Length * 2);
             foreach (byte b in bytes)
